@@ -1,0 +1,14 @@
+---
+title: 'Lab 2: Spatial Data'
+author: "Sophia Leiker"
+date: "10/5/2022"
+output: html_document
+---
+
+```{r setup, include=True}
+knitr::opts_chunk$set
+
+library(sf)
+
+```
+
