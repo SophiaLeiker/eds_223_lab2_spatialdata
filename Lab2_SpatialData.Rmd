@@ -5,10 +5,147 @@ date: "10/5/2022"
 output: html_document
 ---
 
-```{r setup, include=True}
+```{r setup, include=TRUE}
 knitr::opts_chunk$set
 
 library(sf)
+library(spData)
+library(tmap)
+library(dplyr)
+
+```
+
+Making an SF Object
+```{r}
+#making a point
+lnd_point <- st_point(c(0.1,51.5))
+
+#adding a CRS system
+lnd_geom <- st_sfc(lnd_point, crs = 4326)
+
+#adding attributes
+lnd_attrib <- data.frame(
+  name = "London",
+  temperature = 25,
+  date = as.Date("2022-10-05")
+)
+
+#to create an sf object using st_sf
+lnd_sf <- st_sf(lnd_attrib, geometry = lnd_geom)
+
+#checking what is in here
+lnd_sf
+
+#checking the class
+class(lnd_sf)
+
+```
+
+Creating a new object
+```{r}
+#understanding the class
+class(world) #world is in sf object so it has sticky geometries
+
+#figuring out the dimensions
+dim(world) 
+
+#number of rows
+nrow(world)
+
+#seeing top 5 rows of dataset
+head(world)
+
+#doing initial data exploration  (gives the min, max, NA's quartiles)
+summary(world$lifeExp)
+
+#turing world into a dataframe
+world_df <- st_drop_geometry(world)
+class(world_df) #now it is just a normal dataframe 
+colnames(world_df) #looking at the column names
+
+#selecting columns
+world %>% 
+  select(name_long, pop)
+
+#removing columns
+world %>% 
+  select(-subregion, -area_km2)
+
+#select and rename columns
+world %>% 
+  select(name = name_long, population = pop)
+
+#filtering for country size
+world1 <- world %>% 
+  filter(area_km2 < 10000)
+summary(world1$area_km2)
+
+#filtering for life expectancy over 80
+world2 <- world %>% 
+  filter(lifeExp >= 80)
+nrow(world2)
+
+#slice max --> take everything listed and give us the row 
+world %>% 
+  filter(continent == "Asia") %>% 
+  select(name_long, continent, lifeExp) %>% 
+  slice_max(lifeExp)
+
+continents <- world %>% 
+  group_by(continent) %>% 
+  summarize(population = sum(pop,na.rm = TRUE))
+
+tm_shape(continents) +
+  tm_polygons(col = "population",
+              style = "cont")
+
+#counting number of rows in each group
+world10<- world %>% 
+  group_by(continent) %>% 
+  summarize(population = sum(pop, na.rm = TRUE),
+            area_km2 = sum(area_km2, na.rm = TRUE),
+            n_countries = n_distinct(name_long))  %>% #or use n()
+  mutate(density = round(population/area_km2)) %>% 
+  slice_max(density, n = 3) %>% 
+  arrange(desc(n_countries)) #rearranging 
+
+```
+
+
+Joins 
+```{r}
+head(coffee_data)
+nrow(coffee_data)
+
+#LEFT JOIN
+#using the left_join function adding the right one onto the left
+world_coffee <- left_join(world, coffee_data,
+                          by = "name_long") #identifying what column to join by
+
+names(world_coffee)
+
+tm_shape(world_coffee) +
+  tm_polygons(col = "coffee_production_2016")
+
+#INNTER JOIN
+world_coffee_inner <- inner_join(world, coffee_data)
+nrow(world_coffee_inner)
+
+setdiff(coffee_data$name_long, world$name_long) #to see where there are differences between the two datasets in regards to a speciic variable 
+
+#figuring out what the world dataset calls Democratic Repubic of Congo
+drc = stringr::str_subset(world$name_long, "Dem*")
+drc
+
+#updaing coffee dataset to get join to to work
+coffee_data$name_long[grepl("Congo,", coffee_data$name_long)] <- "Democratic Repubic of the Congo" #grepl --> pattern matching and replacement function 
+
+world_coffee_inner <- inner_join(world, coffee_data)
+nrow(world_coffee_inner)
+
+tm_shape(world_coffee_inner) +
+  tm_polygons(col = "coffee_production_2017") +
+  tm_layout(legend.outside = TRUE)
 
 ```
 
